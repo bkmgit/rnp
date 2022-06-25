@@ -86,19 +86,34 @@ static bool rnp_password_cb_bounce(const pgp_password_ctx_t *ctx,
 
 static rnp_result_t rnp_dump_src_to_json(pgp_source_t *src, uint32_t flags, char **result);
 
-static pgp_key_t *
-find_key(rnp_ffi_t ffi, const pgp_key_search_t &search, bool secret, bool try_key_provider)
+static bool
+call_key_callback(rnp_ffi_t ffi, const pgp_key_search_t &search, bool secret)
 {
-    pgp_key_t *key = rnp_key_store_search(secret ? ffi->secring : ffi->pubring, &search, NULL);
-    if (!key && ffi->getkeycb && try_key_provider) {
-        char        identifier[RNP_LOCATOR_MAX_SIZE];
-        const char *identifier_type = NULL;
+    if (!ffi->getkeycb) {
+        return false;
+    }
+    char        identifier[RNP_LOCATOR_MAX_SIZE];
+    const char *identifier_type = NULL;
+    if (!locator_to_str(search, &identifier_type, identifier, sizeof(identifier))) {
+        return false;
+    }
 
-        if (locator_to_str(search, &identifier_type, identifier, sizeof(identifier))) {
-            ffi->getkeycb(ffi, ffi->getkeycb_ctx, identifier_type, identifier, secret);
-            // recurse and try the store search above once more
-            return find_key(ffi, search, secret, false);
-        }
+    ffi->getkeycb(ffi, ffi->getkeycb_ctx, identifier_type, identifier, secret);
+    return true;
+}
+
+static pgp_key_t *
+find_key(rnp_ffi_t               ffi,
+         const pgp_key_search_t &search,
+         bool                    secret,
+         bool                    try_key_provider,
+         pgp_key_t *             after = NULL)
+{
+    pgp_key_t *key =
+      rnp_key_store_search(secret ? ffi->secring : ffi->pubring, &search, after);
+    if (!key && try_key_provider && call_key_callback(ffi, search, secret)) {
+        // recurse and try the store search above once more
+        return find_key(ffi, search, secret, false, after);
     }
     return key;
 }
@@ -3250,6 +3265,29 @@ try {
 }
 FFI_GUARD
 
+static pgp_key_t *
+ffi_decrypt_key_provider(const pgp_key_request_ctx_t *ctx, void *userdata)
+{
+    rnp_decryption_kp_param_t *kparam = (rnp_decryption_kp_param_t *) userdata;
+    bool hidden = ctx->secret && (ctx->search.type == PGP_KEY_SEARCH_KEYID) &&
+                  (ctx->search.by.keyid == pgp_key_id_t({}));
+    /* default to the FFI key provider if not hidden keyid request */
+    if (!hidden) {
+        return kparam->ffi->key_provider.callback(ctx, kparam->ffi->key_provider.userdata);
+    }
+    /* if we had hidden request and last key is NULL then key search was exhausted */
+    if (kparam->has_hidden && !kparam->last) {
+        return NULL;
+    }
+    /* inform user about the hidden recipient before searching through the already loaded keys */
+    if (!kparam->has_hidden) {
+        call_key_callback(kparam->ffi, ctx->search, ctx->secret);
+    }
+    kparam->has_hidden = true;
+    kparam->last = find_key(kparam->ffi, ctx->search, true, true, kparam->last);
+    return kparam->last;
+}
+
 rnp_result_t
 rnp_op_verify_set_flags(rnp_op_verify_t op, uint32_t flags)
 try {
@@ -3288,7 +3326,11 @@ try {
     pgp_parse_handler_t handler;
 
     handler.password_provider = &op->ffi->pass_provider;
-    handler.key_provider = &op->ffi->key_provider;
+
+    rnp_decryption_kp_param_t kparam(op->ffi);
+    pgp_key_provider_t        kprov = {ffi_decrypt_key_provider, &kparam};
+
+    handler.key_provider = &kprov;
     handler.on_signatures = rnp_op_verify_on_signatures;
     handler.src_provider = rnp_verify_src_provider;
     handler.dest_provider = rnp_verify_dest_provider;

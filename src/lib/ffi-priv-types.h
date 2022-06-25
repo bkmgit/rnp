@@ -210,6 +210,14 @@ struct rnp_identifier_iterator_st {
     char                            buf[RNP_LOCATOR_MAX_SIZE];
 };
 
+struct rnp_decryption_kp_param_t {
+    rnp_ffi_t  ffi;
+    bool       has_hidden; /* key provider had hidden keyid request */
+    pgp_key_t *last;       /* last key, returned in hidden keyid request */
+
+    rnp_decryption_kp_param_t(rnp_ffi_t ffiobj) : ffi(ffiobj), has_hidden(false), last(NULL){};
+};
+
 /* This is just for readability at the call site and will hopefully reduce mistakes.
  *
  * Instead of:
