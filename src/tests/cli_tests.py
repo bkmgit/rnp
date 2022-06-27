@@ -4140,7 +4140,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     setup(LVL)
-    main()
+    res = main(exit=False)
 
     if not LEAVE_WORKING_DIRECTORY:
         try:
@@ -4151,3 +4151,5 @@ if __name__ == '__main__':
                 shutil.rmtree(GPGDIR)
         except Exception:
             pass
+
+    sys.exit(not res.result.wasSuccessful())
