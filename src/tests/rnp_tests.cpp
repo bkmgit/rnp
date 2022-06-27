@@ -74,6 +74,7 @@ rnp_tests::rnp_tests() : m_dir(make_temp_dir())
 
 rnp_tests::~rnp_tests()
 {
+    delete_recursively(m_dir);
     free(m_dir);
 }
 

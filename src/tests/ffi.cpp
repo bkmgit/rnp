@@ -529,6 +529,7 @@ TEST_F(rnp_tests, test_ffi_save_keys)
     rnp_ffi_destroy(ffi);
 
     // final cleanup
+    delete_recursively(temp_dir);
     free(temp_dir);
 }
 
@@ -616,6 +617,7 @@ TEST_F(rnp_tests, test_ffi_load_save_keys_to_utf8_path)
     rnp_ffi_destroy(ffi);
 
     // final cleanup
+    delete_recursively(temp_dir);
     free(temp_dir);
 }
 
