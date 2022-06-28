@@ -66,7 +66,9 @@ test_issue_1030(const char *keystore)
         close(pipefd[0]);
     }
     rnp.end();
-    delete_recursively(home);
+    if (!getenv("RNP_KEEP_TEMP")) {
+        delete_recursively(home);
+    }
     free(home);
 }
 

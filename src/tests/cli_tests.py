@@ -4126,6 +4126,8 @@ if __name__ == '__main__':
     if LEAVE_WORKING_DIRECTORY:
         # -w must be removed as unittest doesn't expect it
         sys.argv.remove('-w')
+    else:
+        LEAVE_WORKING_DIRECTORY = os.getenv('RNP_KEEP_TEMP') is not None
 
     LVL = logging.INFO
     if "-d" in sys.argv:
