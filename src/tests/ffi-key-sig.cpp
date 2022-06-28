@@ -109,6 +109,16 @@ TEST_F(rnp_tests, test_ffi_key_signatures)
     assert_rnp_success(rnp_key_get_signature_count(subkey, &sigs));
     assert_int_equal(sigs, 1);
     assert_rnp_success(rnp_key_get_signature_at(subkey, 0, &sig));
+
+    rnp_output_t output = NULL;
+    assert_rnp_success(rnp_output_to_memory(&output, 154));
+    assert_rnp_success(rnp_signature_export(sig, output, 0));
+    uint8_t *buf = NULL;
+    size_t   len = 0;
+    assert_rnp_success(rnp_output_memory_get_buf(output, &buf, &len, false));
+    assert_int_equal(len, 154);
+    assert_rnp_success(rnp_output_destroy(output));
+
     assert_rnp_success(rnp_signature_get_type(sig, &type));
     assert_string_equal(type, "subkey binding");
     rnp_buffer_destroy(type);
