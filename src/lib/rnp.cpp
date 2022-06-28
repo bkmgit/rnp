@@ -6347,6 +6347,21 @@ try {
 FFI_GUARD
 
 rnp_result_t
+rnp_signature_export(rnp_signature_handle_t sig, rnp_output_t output, uint32_t flags)
+try {
+    if (!sig || !sig->sig) {
+        return RNP_ERROR_NULL_POINTER;
+    }
+    if (flags) {
+        return RNP_ERROR_BAD_PARAMETERS;
+    }
+    sig->sig->rawpkt.write(output->dst);
+    output->keep = !output->dst.werr;
+    return output->dst.werr;
+}
+FFI_GUARD
+
+rnp_result_t
 rnp_signature_handle_destroy(rnp_signature_handle_t sig)
 try {
     if (sig && sig->own_sig) {
