@@ -119,6 +119,22 @@ TEST_F(rnp_tests, test_ffi_key_signatures)
     assert_int_equal(len, 154);
     assert_rnp_success(rnp_output_destroy(output));
 
+    output = NULL;
+    assert_rnp_success(rnp_output_to_memory(&output, 4096));
+    assert_rnp_success(rnp_signature_export(sig, output, RNP_KEY_EXPORT_ARMORED));
+    buf = NULL;
+    len = 0;
+    assert_rnp_success(rnp_output_memory_get_buf(output, &buf, &len, false));
+    assert_int_equal(len, 297);
+    std::string data((const char *) buf, len);
+    assert_true(starts_with(data, "-----BEGIN PGP PUBLIC KEY BLOCK-----"));
+    assert_true(ends_with(strip_eol(data), "-----END PGP PUBLIC KEY BLOCK-----"));
+
+    rnp_input_t input;
+    assert_rnp_success(rnp_input_from_memory(&input, buf, len, false));
+    assert_rnp_success(rnp_import_signatures(ffi, input, 0, NULL));
+    assert_rnp_success(rnp_output_destroy(output));
+
     assert_rnp_success(rnp_signature_get_type(sig, &type));
     assert_string_equal(type, "subkey binding");
     rnp_buffer_destroy(type);
