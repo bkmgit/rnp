@@ -6352,12 +6352,25 @@ try {
     if (!sig || !sig->sig) {
         return RNP_ERROR_NULL_POINTER;
     }
+    bool need_armor = flags & RNP_KEY_EXPORT_ARMORED;
+    flags &= ~RNP_KEY_EXPORT_ARMORED;
     if (flags) {
         return RNP_ERROR_BAD_PARAMETERS;
     }
-    sig->sig->rawpkt.write(output->dst);
-    output->keep = !output->dst.werr;
-    return output->dst.werr;
+    int ret;
+    if (need_armor) {
+        rnp::ArmoredDest armor(output->dst, PGP_ARMORED_PUBLIC_KEY);
+        sig->sig->rawpkt.write(armor.dst());
+        output->keep = !output->dst.werr;
+        ret = armor.werr();
+        dst_flush(&armor.dst());
+    } else {
+        sig->sig->rawpkt.write(output->dst);
+        output->keep = !output->dst.werr;
+        ret = output->dst.werr;
+        dst_flush(&output->dst);
+    }
+    return ret;
 }
 FFI_GUARD
 

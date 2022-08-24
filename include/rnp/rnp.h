@@ -1501,7 +1501,7 @@ RNP_API rnp_result_t rnp_signature_remove(rnp_key_handle_t key, rnp_signature_ha
  *
  * @param sig signature handle, cannot be NULL.
  * @param output destination of the data stream.
- * @param flags must be 0.
+ * @param flags must be RNP_KEY_EXPORT_ARMORED or 0.
  * @return RNP_SUCCESS or error code if failed.
  */
 RNP_API rnp_result_t rnp_signature_export(rnp_signature_handle_t sig,
