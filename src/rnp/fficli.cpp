@@ -523,6 +523,26 @@ ffi_pass_callback_string(rnp_ffi_t        ffi,
     return true;
 }
 
+static void
+ffi_key_callback(rnp_ffi_t   ffi,
+                 void *      app_ctx,
+                 const char *identifier_type,
+                 const char *identifier,
+                 bool        secret)
+{
+    cli_rnp_t *rnp = static_cast<cli_rnp_t *>(app_ctx);
+
+    if (rnp::str_case_eq(identifier_type, "keyid") &&
+        rnp::str_case_eq(identifier, "0000000000000000")) {
+        if (rnp->hidden_msg) {
+            return;
+        }
+        ERR_MSG("This message has hidden recipient. Will attempt to use all secret keys for "
+                "decryption.");
+        rnp->hidden_msg = true;
+    }
+}
+
 #ifdef _WIN32
 void
 rnpffiInvalidParameterHandler(const wchar_t *expression,
@@ -600,6 +620,11 @@ cli_rnp_t::init(const rnp_cfg &cfg)
 
     // by default use stdin password provider
     if (rnp_ffi_set_pass_provider(ffi, ffi_pass_callback_stdin, this)) {
+        goto done;
+    }
+
+    // set key provider, currently for informational purposes only
+    if (rnp_ffi_set_key_provider(ffi, ffi_key_callback, this)) {
         goto done;
     }
 
